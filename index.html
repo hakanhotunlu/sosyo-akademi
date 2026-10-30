@@ -314,7 +314,10 @@ const sample = S.map((r,i)=>({id:"e"+i,ex:true,title:r[0],name:r[1],inst:r[2],gr
 const baseGroups = ["Maliye","Sosyoloji","Eğitim","Kamu yönetimi","Kamu"];
 
 let store = {people: sample, groups: baseGroups, me:{name:"",inst:""}};
-try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.people)) store = s; } catch(e) {}
+let firstRun = true;
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.people)) { store = s; firstRun = false; } } catch(e) {}
+// Kart bağlantısıyla ilk kez gelen kişi örnek kişileri görmesin; defteri boş başlasın.
+if (firstRun && location.hash.startsWith("#k=")) { store.people = []; store.groups = []; }
 let prefs = {perPage:18, sort:"recent"};
 try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF)) || {}); } catch(e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); localStorage.setItem(PREF, JSON.stringify(prefs)); } catch(e) {} };
@@ -476,7 +479,8 @@ function receiveCard(raw){
   let c; try { const t = raw.includes("#k=") ? raw.split("#k=")[1] : raw; c = b64d(t); } catch(e) { toast("Bu bir Sosyo Akademi kartı değil"); return; }
   if (!c || !c.name) { toast("Kartta ad yok"); return; }
   const dup = store.people.find(p => trLower(p.name) === trLower(c.name) && (!c.inst || trLower(orgOf(p)) === trLower((c.inst||"").split(",")[0].trim())));
-  openSheet(`<h2>${esc(c.title||"")} ${esc(c.name)} kartını paylaştı</h2><p style="margin:0;color:var(--muted)">${esc(c.inst||"")}${c.city?" · "+esc(c.city):""}</p>
+  const intro = firstRun ? `<p class="mono" style="margin:0">SOSYO AKADEMİ</p><p style="margin:0">Sosyo Akademi, tanıştığın akademisyenleri nerede ve ne konuştuğunuzla birlikte telefonunda saklayan kişisel bir defter. Kayıtların yalnızca bu telefonda durur; kimse göremez.</p>` : "";
+  openSheet(intro + `<div class="head"><span class="av" style="background:${hue(c.name)}">${esc(initials(c.name))}</span></div><h2 style="text-align:center">${esc(c.title||"")} ${esc(c.name)} kartını paylaştı</h2><p style="margin:0;color:var(--muted)">${esc(c.inst||"")}${c.city?" · "+esc(c.city):""}</p>
     ${dup?`<p class="note">Defterinde bu isimde biri zaten var; kaydedersen kartı güncellenir, notların korunur.</p>`:""}
     <form id="rcvForm"><div class="two"><label>Nerede tanıştınız<input id="r-event" list="evdl2" placeholder="Maliye Sempozyumu 2026"></label><label>Ne zaman<input id="r-date" type="date" value="${iso(today)}"></label></div>
     <datalist id="evdl2">${[...new Set(store.people.map(p=>p.event).filter(Boolean))].map(e=>`<option value="${esc(e)}">`).join("")}</datalist>
@@ -486,7 +490,13 @@ function receiveCard(raw){
     const base = {title:c.title||"", name:c.name, inst:c.inst||"", city:c.city||"", phone:c.phone||"", email:c.email||"", verified:true};
     if (dup) { Object.assign(dup, base); if ($("r-topic").value.trim()) dup.topic = [dup.topic, $("r-topic").value.trim()].filter(Boolean).join(" · "); }
     else store.people.push({id:"p"+Date.now(), ...base, event:$("r-event").value.trim(), date:$("r-date").value, topic:$("r-topic").value.trim(), groups:state.group?[state.group]:[], remind:"", remindNote:"", via:"", photo:""});
-    save(); closeSheet(); render(); show("people"); toast(`${c.name} defterine eklendi`); });
+    save(); closeSheet(); render(); show("people"); toast(`${c.name} defterine eklendi`);
+    const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+    if (firstRun && !standalone) openSheet(`<h2>Defterini telefonuna ekle</h2><p style="margin:0">${esc(c.name)} artık defterinde. Uygulamayı ana ekranına eklersen bir dahaki tanışmada kendi QR kartını da gösterebilirsin.</p>
+      <ol style="margin:0;padding-left:20px;display:grid;gap:6px"><li>Safari'nin altındaki Paylaş düğmesine dokun.</li><li><strong>Ana Ekrana Ekle</strong>'yi seç.</li><li>Ana ekrandaki Sosyo Akademi simgesinden aç ve "QR kartım"da kendi kartını doldur.</li></ol>
+      <p class="note">Ana ekrandan açılan uygulama, Safari'deki kayıtları görmez. ${esc(c.name)} kartını orada bir kez daha okutman gerekebilir.</p>
+      <button class="btn" type="button" data-close>Tamam</button>`);
+    firstRun = false; });
 }
 let scanStream = null;
 async function startScan(){
