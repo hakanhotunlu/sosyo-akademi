@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sosyo Akademi">
+<meta name="theme-color" content="#f3f5f4">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Sosyo Akademi</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* Layout: telefon uygulaması kabuğu; üstte başlık + grup şeridi, ortada 3 sütunlu kişi ızgarası, altta sabit sekme çubuğu */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --fg:#17211f; --muted:#5d6b68; --line:#d9e0de;
+  --accent:#0f6b5c; --accent-soft:#dcefe9; --accent-fg:#ffffff;
+  --warn:#9a5b00; --warn-soft:#fbecd2; --due:#a3271f; --due-soft:#f8dedb; --scrim:rgba(10,20,18,.45);
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101614; --surface:#18201e; --fg:#e6ecea; --muted:#9aa8a4; --line:#2c3734;
+  --accent:#4fc2a8; --accent-soft:#1d3a33; --accent-fg:#08201a;
+  --warn:#e6a94a; --warn-soft:#3a2c14; --due:#f08a80; --due-soft:#3d1d1a; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101614; --surface:#18201e; --fg:#e6ecea; --muted:#9aa8a4; --line:#2c3734;
+  --accent:#4fc2a8; --accent-soft:#1d3a33; --accent-fg:#08201a;
+  --warn:#e6a94a; --warn-soft:#3a2c14; --due:#f08a80; --due-soft:#3d1d1a; --scrim:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.app{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px calc(88px + env(safe-area-inset-bottom,0px))}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);padding-block:8px;display:flex;flex-direction:column;gap:10px}
+.titlebar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-family:var(--font-display);font-size:1.5rem;margin:0;letter-spacing:-.01em}
+h2{font-family:var(--font-display);font-size:1.1rem;margin:0}
+.count{font:500 .78rem var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,textarea,select{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+textarea{min-height:70px;resize:vertical}
+.btn{font-weight:600;border:0;border-radius:10px;padding:11px 16px;background:var(--accent);color:var(--accent-fg)}
+.btn.ghost{background:var(--accent-soft);color:var(--fg)}
+.btn.danger{background:var(--due-soft);color:var(--due)}
+.link{background:none;border:0;padding:0;color:var(--accent);font-weight:500;font-size:.85rem}
+.iconbtn{background:var(--surface);border:1px solid var(--line);border-radius:10px;width:40px;height:40px;display:grid;place-items:center;flex:none}
+.iconbtn svg{width:20px;height:20px}
+/* grup şeridi */
+.groups{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-inline:-4px;padding-inline:4px}
+.groups::-webkit-scrollbar{display:none}
+.gchip{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:.85rem;white-space:nowrap}
+.gchip[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.gchip .n{opacity:.7;margin-left:4px;font-family:var(--font-mono);font-size:.75rem}
+.gchip.add{border-style:dashed;color:var(--accent)}
+.tools{display:flex;gap:8px;align-items:center}
+.tools input{flex:1;min-width:0}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.filters select{padding:8px 10px;font-size:.85rem}
+.filters select.on{border-color:var(--accent);background:var(--accent-soft)}
+/* kişi ızgarası */
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px;margin-top:6px}
+@media (min-width:560px){.grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}}
+.tile{background:none;border:0;padding:6px 2px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;border-radius:12px;min-width:0}
+.tile:hover{background:var(--surface)}
+.av{width:68px;height:68px;border-radius:50%;display:grid;place-items:center;font:700 1.25rem var(--font-display);color:#fff;overflow:hidden;position:relative;flex:none;margin-bottom:4px}
+.av img{width:100%;height:100%;object-fit:cover}
+.av .dot{position:absolute;right:2px;bottom:2px;width:16px;height:16px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);display:grid;place-items:center}
+.av .dot::after{content:"";width:5px;height:3px;border-left:1.5px solid var(--accent-fg);border-bottom:1.5px solid var(--accent-fg);transform:rotate(-45deg) translate(0,-1px)}
+.av .bell{position:absolute;left:0;top:0;width:14px;height:14px;border-radius:50%;background:var(--due);border:2px solid var(--bg)}
+.t-title{font-size:.7rem;color:var(--muted);line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-name{font-weight:600;font-size:.86rem;line-height:1.2;max-width:100%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.t-inst{font-size:.72rem;color:var(--muted);line-height:1.2;max-width:100%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
+.pager .pg{display:flex;gap:6px;align-items:center}
+.pager select{width:auto;padding:6px 8px;font-size:.85rem}
+.pager label{font-size:.8rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.empty{color:var(--muted);text-align:center;padding:28px 16px;border:1px dashed var(--line);border-radius:12px;grid-column:1/-1}
+/* liste satırları (etkinlik, hatırlatma) */
+.rows{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.row{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left;width:100%}
+.row .av{width:44px;height:44px;font-size:.95rem;margin:0}
+.row .info{min-width:0;flex:1}
+.row .nm{font-weight:600;font-size:.92rem}
+.row .sub{font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;margin-top:18px}
+.chip{display:inline-block;font-size:.72rem;font-weight:500;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.chip.ok{border-color:var(--accent);color:var(--accent)}
+.chip.due{background:var(--due-soft);color:var(--due);border-color:transparent}
+.chip.soon{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.ex{border-style:dashed}
+/* alt sekme çubuğu */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.tabbar .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);align-items:end}
+.tabbar button{background:none;border:0;padding:8px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.7rem;color:var(--muted);position:relative}
+.tabbar button svg{width:22px;height:22px}
+.tabbar button[aria-selected="true"]{color:var(--accent)}
+.tabbar .fab{align-self:center}
+.tabbar .fab span{width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;margin-top:-18px;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.badge{position:absolute;top:4px;left:calc(50% + 6px);background:var(--due);color:#fff;border-radius:999px;font-size:.62rem;padding:0 5px;line-height:16px;font-family:var(--font-mono)}
+/* alt sayfa (sheet) */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:40}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);border-radius:18px 18px 0 0;max-height:88%;overflow-y:auto;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet .in{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 6px}
+.sheet .head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px}
+.sheet .head .av{width:96px;height:96px;font-size:1.8rem}
+.sheet .pname{font:700 1.25rem var(--font-display)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:.88rem}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.gpick{display:flex;flex-wrap:wrap;gap:6px}
+form{display:grid;gap:10px}
+label{font-size:.8rem;color:var(--muted);display:grid;gap:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.qrbox{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:8px}
+#qr{background:#ffffff;padding:12px;border-radius:8px}
+#qr img,#qr canvas{display:block;max-width:100%}
+.mono{font-family:var(--font-mono);font-size:.78rem;color:var(--muted);word-break:break-all}
+.note{font-size:.78rem;color:var(--warn);background:var(--warn-soft);padding:8px 12px;border-radius:10px;margin:0}
+.call{position:fixed;inset:0;z-index:60;background:linear-gradient(180deg,#0d2a25,#07110f);color:#eef5f3;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;padding:calc(48px + env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) calc(32px + env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px))}
+.call .av{width:120px;height:120px;font-size:2.4rem;border:3px solid rgba(255,255,255,.25)}
+.call .cinfo{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:420px}
+.call .ctag{font:500 .75rem var(--font-mono);letter-spacing:.06em;opacity:.7}
+.call .cname{font:700 1.7rem var(--font-display)}
+.call .ccard{background:rgba(255,255,255,.08);border-radius:14px;padding:12px 14px;text-align:left;font-size:.88rem;display:grid;gap:4px;width:100%}
+.call .ccard b{opacity:.65;font-weight:500}
+.call .cbtns{display:flex;gap:64px}
+.call .cbtns button{width:64px;height:64px;border-radius:50%;border:0;color:#fff;font-size:.7rem}
+.login{position:fixed;inset:0;z-index:55;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;justify-content:space-between;gap:24px;padding:calc(40px + env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(24px,env(safe-area-inset-left,0px))}
+.login>*{width:100%;max-width:420px;margin-inline:auto}
+.lg-top{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding-top:4vh}
+.lg-mark{width:72px;height:72px;color:var(--accent)}
+.lg-name{font:700 2.1rem var(--font-display);margin:0;letter-spacing:-.02em}
+.lg-tag{margin:0;color:var(--muted);text-wrap:balance}
+.lg-main{display:flex;flex-direction:column;gap:10px}
+.lg-h{margin:0 0 2px;font-size:.8rem;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.lg-btn{width:100%;padding:14px 16px;font-size:.95rem}
+.lg-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;margin-top:10px}
+.lg-or::before,.lg-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.lg-fine{margin:0;font-size:.75rem;color:var(--muted);line-height:1.45}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.86rem;z-index:50}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .2s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;-webkit-text-size-adjust:100%}
+img{max-width:100%}
+</style>
+</head>
+<body>
+
+<section class="login" id="v-login" hidden>
+  <div class="lg-top">
+    <svg class="lg-mark" viewBox="0 0 64 64" aria-hidden="true"><circle cx="22" cy="26" r="10" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="42" cy="26" r="10" fill="none" stroke="currentColor" stroke-width="4"/><path d="M10 52c2-8 7-12 12-12s10 4 10 4 5-4 10-4 10 4 12 12" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
+    <h1 class="lg-name">Sosyo Akademi</h1>
+    <p class="lg-tag">Tanıştığın akademisyenleri unutma.<br>Yalnızca gerçekten tanıştıklarınla bağlan.</p>
+  </div>
+  <div class="lg-main" id="lgMain">
+    <p class="lg-h">Zaten üye misin?</p>
+    <button class="btn lg-btn" type="button" data-login="ORCID">ORCID ile giriş yap</button>
+    <button class="btn ghost lg-btn" type="button" data-login="e-posta">Kurum e-postasıyla giriş yap</button>
+    <button class="btn ghost lg-btn" type="button" data-login="Google">Google ile giriş yap</button>
+    <div class="lg-or"><span>Yeni misin?</span></div>
+    <button class="btn ghost lg-btn" type="button" id="lgInvite">Davet kodum var</button>
+    <p class="lg-fine">Sosyo Akademi'ye yalnızca tanıştığın bir üyenin davetiyle ya da QR koduyla katılabilirsin. Açık kayıt yok.</p>
+  </div>
+  <form class="lg-main" id="lgCode" hidden>
+    <label>Davet kodu ya da bağlantısı<input id="lg-code" required placeholder="Örn. SA-7K2Q-9M"></label>
+    <p class="lg-fine">QR okuttuysan bu adıma gerek yok; bağlantı seni doğrudan kayıt ekranına getirir.</p>
+    <button class="btn lg-btn" type="submit">Devam et</button>
+    <button class="link" type="button" id="lgBack">Geri</button>
+  </form>
+  <p class="lg-fine" style="text-align:center">Giriş yaparak <u>Aydınlatma Metni</u>'ni ve <u>Kullanım Koşulları</u>'nı kabul edersin. Verilerin Türkiye'de saklanır.</p>
+</section>
+<div class="app">
+  <!-- KİŞİLER -->
+  <section id="v-people">
+    <div class="top">
+      <div class="titlebar">
+        <div><h1>Kişilerim</h1><span class="count" id="peopleCount"></span></div>
+        <button class="iconbtn" id="sortBtn" type="button" aria-label="Sıralamayı değiştir" title="Sıralama"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg></button>
+      </div>
+      <div class="tools"><input id="search" type="search" placeholder="Ad, kurum, konu ara"></div>
+      <div class="filters"><select id="fOrg" aria-label="Kuruma göre filtrele"></select><select id="fCity" aria-label="İle göre filtrele"></select></div>
+      <div class="groups" id="groupBar" role="toolbar" aria-label="Gruplar"></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="pager">
+      <label for="perPage">Ekranda<select id="perPage"><option>12</option><option selected>18</option><option>24</option><option>36</option><option value="0">Tümü</option></select></label>
+      <div class="pg"><button class="iconbtn" id="prev" type="button" aria-label="Önceki sayfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button><span class="count" id="pageInfo"></span><button class="iconbtn" id="next" type="button" aria-label="Sonraki sayfa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button></div>
+    </div>
+    <p class="note" style="margin-top:14px">Kayıtlar yalnızca bu telefonda saklanır. Örnek kişileri ve yedeklemeyi "QR kartım" sekmesinden yönetebilirsin.</p>
+  </section>
+
+  <!-- ETKİNLİKLER -->
+  <section id="v-events" hidden>
+    <div class="top"><div class="titlebar"><h1>Etkinlikler</h1></div></div>
+    <div id="eventList"></div>
+  </section>
+
+  <!-- HATIRLATMALAR -->
+  <section id="v-reminders" hidden>
+    <div class="top"><div class="titlebar"><h1>Hatırlatmalar</h1></div></div>
+    <div id="remList"></div>
+  </section>
+
+  <!-- QR -->
+  <section id="v-qr" hidden>
+    <div class="top"><div class="titlebar"><h1>QR kartım</h1></div></div>
+    <div class="qrbox">
+      <label style="width:100%;text-align:left">Kartında görünecek adın<input id="me-name" placeholder="Ayşe Yılmaz"></label>
+      <label style="width:100%;text-align:left">Kurumun<input id="me-inst" placeholder="Üniversite, bölüm"></label>
+      <div id="qr" aria-label="Kişisel QR kodun"></div>
+      <p style="margin:0;max-width:40ch">Tanıştığın kişi bu kodu okutunca ikinizin de onayıyla <strong>doğrulanmış bağlantı</strong> kurulur. Uygulaması yoksa davet bağlantısını gönder.</p>
+      <p class="mono" id="inviteLink"></p>
+      <button class="btn ghost" type="button" id="copyBtn" hidden>Davet bağlantısını kopyala</button>
+    </div>
+    <div class="qrbox" style="align-items:stretch;text-align:left">
+      <h2>Yedek</h2>
+      <p style="margin:0;color:var(--muted);font-size:.88rem">Kayıtların yalnızca bu telefonda duruyor. Ayda bir dışa aktarıp dosyayı iCloud Drive'a kaydet.</p>
+      <button class="btn" type="button" id="exportBtn">Dışa aktar (yedek dosyası)</button>
+      <label>Yedekten geri yükle<input type="file" id="importIn" accept="application/json,.json"></label>
+      <button class="btn danger" type="button" id="clearEx">Örnek kişileri sil</button>
+      <button class="link" type="button" id="showLogin" hidden>Giriş ekranını göster (çıkış yap)</button>
+      <button class="link" type="button" id="previewJoin" hidden>Davet ettiğin kişinin göreceği kayıt ekranını önizle</button>
+    </div>
+  </section>
+
+  <!-- KAYIT ÖNİZLEME -->
+  <section id="v-join" hidden>
+    <div class="qrbox" style="align-items:stretch;text-align:left">
+      <p class="mono" style="margin:0">Önizleme: davet edilen kişinin ekranı</p>
+      <h2><span id="joinInviter"></span> seni Sosyo Akademi'ye davet etti</h2>
+      <p style="margin:0;color:var(--muted)">Sosyo Akademi'ye yalnızca tanıştığın birinin davetiyle katılabilirsin. Önce kimliğini doğrula.</p>
+      <div id="joinChoose" style="display:grid;gap:10px">
+        <button class="btn" type="button" id="joinOrcid">ORCID ile doğrula</button>
+        <button class="btn ghost" type="button" id="joinMailBtn">Kurum e-postasıyla doğrula</button>
+        <button class="link" type="button" id="joinVouch">Akademisyen değilim (kamu veya sektör uzmanı): davet edenin kefaletiyle katıl</button>
+      </div>
+      <form id="joinMail" hidden>
+        <label>Kurum e-postan (üniversite veya kamu)<input id="j-mail" type="email" required placeholder="ad.soyad@universite.edu.tr"></label>
+        <p id="j-err" class="note" hidden></p>
+        <button class="btn" type="submit">Doğrulama kodu gönder</button>
+      </form>
+      <div id="joinDone" hidden style="display:grid;gap:8px">
+        <span class="chip ok" style="justify-self:start">✓ Doğrulandı</span>
+        <p style="margin:0" id="joinDoneText"></p>
+      </div>
+      <button class="link" type="button" id="joinBack" style="justify-self:start">Önizlemeyi kapat</button>
+    </div>
+  </section>
+</div>
+
+<nav class="tabbar" role="tablist"><div class="in">
+  <button role="tab" data-v="people" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.6 0 4.2 1.6 4.6 4.5"/></svg>Kişiler</button>
+  <button role="tab" data-v="events" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Etkinlikler</button>
+  <button class="fab" id="addBtn" type="button" aria-label="Kişi ekle"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" width="22" height="22"><path d="M12 5v14M5 12h14"/></svg></span></button>
+  <button role="tab" data-v="reminders" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 16V11a6 6 0 1112 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 004 0"/></svg>Hatırlat<span class="badge" id="remBadge" hidden></span></button>
+  <button role="tab" data-v="qr" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="7" height="7" rx="1"/><rect x="13.5" y="3.5" width="7" height="7" rx="1"/><rect x="3.5" y="13.5" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 18h2.5v2.5H18zM14 19.5h2"/></svg>QR kartım</button>
+</div></nav>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true"><div class="in" id="sheetIn"></div></div>
+<div class="call" id="call" hidden role="dialog" aria-label="Gelen arama önizlemesi"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const KEY = "sosyo-akademi-v2", PREF = "sosyo-akademi-prefs";
+const today = new Date(); today.setHours(0,0,0,0);
+const iso = d => d.toISOString().slice(0,10);
+const addDays = n => { const d = new Date(today); d.setDate(d.getDate()+n); return iso(d); };
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = d => d ? new Date(d+"T00:00").toLocaleDateString("tr-TR",{day:"numeric",month:"short",year:"numeric"}) : "";
+const trLower = s => String(s||"").toLocaleLowerCase("tr");
+
+// Örnek kişiler: [unvan, ad soyad, kurum, gruplar, etkinlik, kaç gün önce, konu, doğrulanmış, hatırlatma günü, hatırlatma notu]
+const S = [
+ ["Prof. Dr.","Ayten Kılıç","Ankara Üniversitesi, Maliye","Maliye","Maliye Sempozyumu 2026",30,"Vergi uyumu üzerine anket çalışması.",1,-3,"Anket formunu gönder"],
+ ["Doç. Dr.","Serkan Yıldız","Marmara Üniversitesi, Maliye","Maliye","Maliye Sempozyumu 2026",30,"Yerel yönetim bütçeleri.",1,"",""],
+ ["Dr. Öğr. Üyesi","Gökhan Er","Dokuz Eylül Üniversitesi, Maliye","Maliye","Maliye Sempozyumu 2026",30,"Kamu borcu sürdürülebilirliği.",0,10,"Ortak bildiri fikrini sor"],
+ ["Gelir Uzmanı","Burcu Şahin","Hazine ve Maliye Bakanlığı","Maliye,Kamu","Maliye Sempozyumu 2026",30,"Dijital vergi denetimi pilot projesi.",1,"",""],
+ ["Daire Başkanı","Okan Tunç","Strateji ve Bütçe Başkanlığı","Maliye,Kamu","Bütçe Çalıştayı",55,"Performans esaslı bütçe.",1,4,"Çalıştay raporunu iste"],
+ ["Prof. Dr.","Nesrin Aydın","Gazi Üniversitesi, Maliye","Maliye","Bütçe Çalıştayı",55,"Mali kural tasarımı.",0,"",""],
+ ["Doç. Dr.","Elif Karaca","Hacettepe Üniversitesi, Sosyoloji","Sosyoloji","Ulusal Sosyoloji Kongresi",40,"Kentsel dönüşüm saha çalışması; ortak makale.",1,-2,"Makale taslağını gönder"],
+ ["Dr. Öğr. Üyesi","Murat Aksoy","Ege Üniversitesi, İletişim","Sosyoloji","Ulusal Sosyoloji Kongresi",40,"Dijital medya ve gençlik.",0,"",""],
+ ["Prof. Dr.","Hülya Çetin","İstanbul Üniversitesi, Sosyoloji","Sosyoloji","Ulusal Sosyoloji Kongresi",40,"Göç ve aile yapısı.",1,"",""],
+ ["Arş. Gör.","Emre Doğan","ODTÜ, Sosyoloji","Sosyoloji","Ulusal Sosyoloji Kongresi",40,"Doktora tezi: kırsal dönüşüm.",0,"",""],
+ ["Dr.","Can Öztürk","Leiden University, Göç Çalışmaları","Sosyoloji","ESA Konferansı, Porto",70,"Akademik göç; ortak veri seti.",0,20,"Veri seti erişimini hatırlat"],
+ ["Prof. Dr.","Zeynep Demir","Boğaziçi Üniversitesi, Eğitim","Eğitim","TÜBİTAK 1001 Paneli",15,"Karma yöntem atölyesi.",1,5,"Atölye tarihini sor"],
+ ["Doç. Dr.","Kemal Arslan","Anadolu Üniversitesi, Açıköğretim","Eğitim","TÜBİTAK 1001 Paneli",15,"Uzaktan eğitimde ölçme.",1,"",""],
+ ["Dr. Öğr. Üyesi","Selin Koç","Pamukkale Üniversitesi, Eğitim","Eğitim","Eğitim Bilimleri Kongresi",90,"Öğretmen tükenmişliği.",0,"",""],
+ ["Uzman","Derya Polat","Milli Eğitim Bakanlığı, ÖDSGM","Eğitim,Kamu","Eğitim Bilimleri Kongresi",90,"LGS veri erişimi.",1,"",""],
+ ["Prof. Dr.","Ali Rıza Kaya","Ankara Hacı Bayram Veli Üni., Kamu Yönetimi","Kamu yönetimi","Kamu Yönetimi Forumu",120,"Yerel yönetim reformu.",1,"",""],
+ ["Doç. Dr.","Seda Güneş","Selçuk Üniversitesi, Kamu Yönetimi","Kamu yönetimi","Kamu Yönetimi Forumu",120,"Dijital devlet.",0,"",""],
+ ["Kaymakam","Tolga Uçar","İçişleri Bakanlığı","Kamu yönetimi,Kamu","Kamu Yönetimi Forumu",120,"Afet koordinasyonu saha deneyimi.",1,"",""],
+ ["Dr.","Merve Aslan","TÜİK","Kamu,Maliye","Bütçe Çalıştayı",55,"Hane halkı bütçe anketi mikro verisi.",1,"",""],
+ ["Prof. Dr.","Hasan Erdem","Erciyes Üniversitesi, İktisat","Maliye","Maliye Sempozyumu 2026",30,"Vergi harcamaları.",0,"",""],
+ ["Doç. Dr.","Pınar Öz","Uludağ Üniversitesi, Sosyoloji","Sosyoloji","Ulusal Sosyoloji Kongresi",40,"Toplumsal cinsiyet ve emek.",1,"",""],
+ ["Dr. Öğr. Üyesi","Barış Tekin","Karadeniz Teknik Üni., Eğitim","Eğitim","TÜBİTAK 1001 Paneli",15,"Fen eğitimi projesi.",0,"",""],
+ ["Prof. Dr.","Gülay Sarı","Akdeniz Üniversitesi, Maliye","Maliye","Bütçe Çalıştayı",55,"Sağlık harcamaları.",1,"",""],
+ ["Doç. Dr.","Cem Yalçın","Sakarya Üniversitesi, Kamu Yönetimi","Kamu yönetimi","Kamu Yönetimi Forumu",120,"Etik ve şeffaflık.",0,"",""],
+];
+const sample = S.map((r,i)=>({id:"e"+i,ex:true,title:r[0],name:r[1],inst:r[2],groups:r[3].split(","),event:r[4],date:addDays(-r[5]),topic:r[6],verified:!!r[7],remind:r[8]===""?"":addDays(r[8]),remindNote:r[9],via:"",photo:""}));
+const baseGroups = ["Maliye","Sosyoloji","Eğitim","Kamu yönetimi","Kamu"];
+
+let store = {people: sample, groups: baseGroups, me:{name:"",inst:""}};
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.people)) store = s; } catch(e) {}
+let prefs = {perPage:18, sort:"recent"};
+try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF)) || {}); } catch(e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); localStorage.setItem(PREF, JSON.stringify(prefs)); } catch(e) {} };
+let state = {group:"", q:"", page:0, org:"", city:""};
+const CITY = {"Ankara Üniversitesi":"Ankara","Marmara Üniversitesi":"İstanbul","Dokuz Eylül Üniversitesi":"İzmir","Hazine ve Maliye Bakanlığı":"Ankara","Strateji ve Bütçe Başkanlığı":"Ankara","Gazi Üniversitesi":"Ankara","Hacettepe Üniversitesi":"Ankara","Ege Üniversitesi":"İzmir","İstanbul Üniversitesi":"İstanbul","ODTÜ":"Ankara","Leiden University":"Yurt dışı","Boğaziçi Üniversitesi":"İstanbul","Anadolu Üniversitesi":"Eskişehir","Pamukkale Üniversitesi":"Denizli","Milli Eğitim Bakanlığı":"Ankara","Ankara Hacı Bayram Veli Üni.":"Ankara","Selçuk Üniversitesi":"Konya","İçişleri Bakanlığı":"Ankara","TÜİK":"Ankara","Erciyes Üniversitesi":"Kayseri","Uludağ Üniversitesi":"Bursa","Karadeniz Teknik Üni.":"Trabzon","Akdeniz Üniversitesi":"Antalya","Sakarya Üniversitesi":"Sakarya"};
+const orgOf = p => (p.inst||"").split(",")[0].trim();
+const cityOf = p => p.city || CITY[orgOf(p)] || "";
+
+const PAL = ["#0f6b5c","#3d5a99","#8a4b9a","#b2552c","#2f7d3a","#9a6a00","#2b6f8f","#a33a5b"];
+const hue = s => { let h=0; for (const c of s) h=(h*31+c.charCodeAt(0))|0; return PAL[Math.abs(h)%PAL.length]; };
+const initials = n => n.trim().split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join("").toLocaleUpperCase("tr");
+const avatar = p => `<span class="av" style="background:${hue(p.name)}">${p.photo?`<img src="${p.photo}" alt="">`:esc(initials(p.name))}${p.verified?'<span class="dot" title="Doğrulanmış bağlantı"></span>':''}${p.remind && p.remind<=iso(today)?'<span class="bell" title="Hatırlatma zamanı"></span>':''}</span>`;
+function remChip(p){
+  if (!p.remind) return "";
+  const diff = Math.round((new Date(p.remind+"T00:00") - today)/864e5);
+  if (diff < 0) return `<span class="chip due">${-diff} gün gecikti</span>`;
+  if (diff <= 7) return `<span class="chip soon">${diff === 0 ? "Bugün" : diff+" gün kaldı"}</span>`;
+  return `<span class="chip">${fmt(p.remind)}</span>`;
+}
+const sorted = list => [...list].sort(prefs.sort==="az" ? (a,b)=>a.name.localeCompare(b.name,"tr") : (a,b)=>(b.date||"").localeCompare(a.date||""));
+
+function renderPeople(){
+  const all = store.people;
+  const counts = {}; all.forEach(p => (p.groups||[]).forEach(g => counts[g]=(counts[g]||0)+1));
+  $("groupBar").innerHTML = `<button class="gchip" aria-pressed="${!state.group}" data-g="">Tümü<span class="n">${all.length}</span></button>`
+    + store.groups.map(g=>`<button class="gchip" aria-pressed="${state.group===g}" data-g="${esc(g)}">${esc(g)}<span class="n">${counts[g]||0}</span></button>`).join("")
+    + `<button class="gchip add" id="addGroup">+ Grup</button>`;
+  const q = trLower(state.q);
+  const opts = (vals, cur, all) => `<option value="">${all}</option>` + [...new Set(vals.filter(Boolean))].sort((a,b)=>a.localeCompare(b,"tr")).map(v=>`<option${v===cur?" selected":""}>${esc(v)}</option>`).join("");
+  $("fOrg").innerHTML = opts(all.map(orgOf), state.org, "Tüm kurumlar"); $("fCity").innerHTML = opts(all.map(cityOf), state.city, "Tüm iller");
+  $("fOrg").classList.toggle("on", !!state.org); $("fCity").classList.toggle("on", !!state.city);
+  let list = all.filter(p => (!state.org || orgOf(p)===state.org) && (!state.city || cityOf(p)===state.city) && (!state.group || (p.groups||[]).includes(state.group)) && (!q || trLower([p.title,p.name,p.inst,p.topic,p.event,(p.groups||[]).join(" ")].join(" ")).includes(q)));
+  list = sorted(list);
+  const per = +prefs.perPage || list.length || 1;
+  const pages = Math.max(1, Math.ceil(list.length/per));
+  state.page = Math.min(state.page, pages-1);
+  const slice = list.slice(state.page*per, state.page*per+per);
+  $("grid").innerHTML = slice.length ? slice.map(p=>`<button class="tile" data-open="${p.id}">${avatar(p)}<span class="t-title">${esc(p.title)}</span><span class="t-name">${esc(p.name)}</span><span class="t-inst">${esc(p.inst)}</span></button>`).join("")
+    : `<div class="empty">${q||state.group ? "Bu filtreye uyan kişi yok." : "Henüz kimse yok. Alttaki + ile ilk tanıştığın kişiyi ekle."}</div>`;
+  $("peopleCount").textContent = `${list.length} kişi${state.group?" · "+state.group:""}${state.org?" · "+state.org:""}${state.city?" · "+state.city:""} · ${prefs.sort==="az"?"A–Z":"son tanışılan"}`;
+  $("pageInfo").textContent = `${state.page+1} / ${pages}`;
+  $("prev").disabled = state.page===0; $("next").disabled = state.page>=pages-1;
+  $("perPage").value = String(prefs.perPage);
+}
+const row = p => `<button class="row" data-open="${p.id}">${avatar(p)}<span class="info"><span class="nm">${esc(p.title)} ${esc(p.name)}</span><br><span class="sub">${esc(p.inst)}</span>${p.remindNote?`<br><span class="sub">${esc(p.remindNote)}</span>`:""}</span>${remChip(p)}</button>`;
+function renderLists(){
+  const groups = {};
+  sorted(store.people).forEach(p => (groups[p.event||"Etkinlik belirtilmemiş"] ||= []).push(p));
+  $("eventList").innerHTML = Object.entries(groups).sort((a,b)=>(b[1][0].date||"").localeCompare(a[1][0].date||"")).map(([ev,ps]) => `<div class="sec-h"><h2>${esc(ev)}</h2><span class="count">${fmt(ps[0].date)} · ${ps.length} kişi</span></div><div class="rows">${ps.map(row).join("")}</div>`).join("") || `<div class="empty">Etkinlik yok.</div>`;
+  const rem = store.people.filter(p=>p.remind).sort((a,b)=>a.remind.localeCompare(b.remind));
+  $("remList").innerHTML = rem.length ? `<div class="rows">${rem.map(row).join("")}</div>` : `<div class="empty">Bekleyen hatırlatma yok.</div>`;
+  const due = rem.filter(p=>p.remind<=iso(today)).length;
+  $("remBadge").hidden = !due; $("remBadge").textContent = due;
+}
+const render = () => { renderPeople(); renderLists(); };
+
+// görünümler
+const views = ["people","events","reminders","qr","join"];
+function show(v){
+  views.forEach(x => $("v-"+x).hidden = x!==v);
+  document.querySelectorAll(".tabbar [role=tab]").forEach(b => b.setAttribute("aria-selected", b.dataset.v===v || (v==="join"&&b.dataset.v==="qr")));
+  if (v==="qr") drawQR();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".tabbar [role=tab]").forEach(b => b.onclick = () => show(b.dataset.v));
+
+// alt sayfa
+function openSheet(html){ $("sheetIn").innerHTML = `<div class="grab"></div>`+html; $("sheet").hidden=false; $("scrim").hidden=false; }
+function closeSheet(){ $("sheet").hidden=true; $("scrim").hidden=true; }
+$("scrim").onclick = closeSheet;
+document.addEventListener("keydown", e => { if (e.key==="Escape") closeSheet(); });
+
+function openPerson(id){
+  const p = store.people.find(x=>x.id===id); if (!p) return;
+  openSheet(`<div class="head">${avatar(p)}<span class="t-title" style="font-size:.85rem">${esc(p.title)}</span><span class="pname">${esc(p.name)}</span><span style="color:var(--muted)">${esc(p.inst)}</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:6px">${p.verified?'<span class="chip ok">✓ Doğrulanmış bağlantı</span>':'<span class="chip">Yalnızca defterimde</span>'}${remChip(p)}${p.ex?'<span class="chip ex">Örnek</span>':''}</div></div>
+    <dl class="kv"><dt>İl</dt><dd>${esc(cityOf(p)||"–")}</dd><dt>Tanışma</dt><dd>${esc(p.event||"–")}, ${fmt(p.date)}</dd><dt>Telefon</dt><dd>${esc(p.phone||"0532 000 00 00 (örnek)")}</dd>${p.via?`<dt>Tanıştıran</dt><dd>${esc(p.via)}</dd>`:""}<dt>Not</dt><dd>${esc(p.topic||"–")}</dd>${p.remind?`<dt>Yapılacak</dt><dd>${esc(p.remindNote||"–")} (${fmt(p.remind)})</dd>`:""}</dl>
+    <div><label style="margin-bottom:6px">Gruplar (dokunarak ekle/çıkar)</label><div class="gpick">${store.groups.map(g=>`<button class="gchip" aria-pressed="${(p.groups||[]).includes(g)}" data-tg="${esc(g)}" data-pid="${p.id}">${esc(g)}</button>`).join("")}</div></div>
+    <label>Profil fotoğrafı<input type="file" accept="image/*" id="photoIn" data-pid="${p.id}"></label>
+    <button class="btn ghost" data-call="${p.id}">Bu kişi ararsa ekranda ne görünür?</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${p.remind?`<button class="btn ghost" data-done="${p.id}">Hatırlatmayı tamamla</button>`:""}<button class="btn danger" data-del="${p.id}">Kişiyi sil</button><button class="btn ghost" data-close>Kapat</button></div>`);
+  $("photoIn").onchange = e => readImg(e.target.files[0]).then(src => { if(!src) return; p.photo = src; save(); render(); openPerson(p.id); toast("Fotoğraf eklendi"); });
+}
+const readImg = f => new Promise(r => { if(!f) return r(""); const fr = new FileReader(); fr.onload = () => { const img = new Image(); img.onload = () => { const c = document.createElement("canvas"), s = 160, m = Math.min(img.width,img.height); c.width=c.height=s; c.getContext("2d").drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,s,s); r(c.toDataURL("image/jpeg",.82)); }; img.onerror = () => r(""); img.src = fr.result; }; fr.readAsDataURL(f); });
+
+function openAdd(){
+  openSheet(`<h2>Yeni kişi</h2><form id="addForm">
+    <label>Fotoğraf veya kartvizit<input id="f-photo" type="file" accept="image/*"></label>
+    <div class="two"><label>Unvan<input id="f-title" placeholder="Doç. Dr."></label><label>Ad soyad<input id="f-name" required placeholder="Ayşe Yılmaz"></label></div>
+    <div class="two"><label>Üniversite veya kurum<input id="f-inst" placeholder="ODTÜ, Sosyoloji"></label><label>İl<input id="f-city" placeholder="Ankara"></label></div>
+    <div class="two"><label>Nerede tanıştınız<input id="f-event" list="evdl" placeholder="Maliye Sempozyumu 2026"></label><label>Ne zaman<input id="f-date" type="date" value="${iso(today)}"></label></div>
+    <datalist id="evdl">${[...new Set(store.people.map(p=>p.event).filter(Boolean))].map(e=>`<option value="${esc(e)}">`).join("")}</datalist>
+    <div><label style="margin-bottom:6px">Gruplar</label><div class="gpick" id="f-groups">${store.groups.map(g=>`<button type="button" class="gchip" aria-pressed="${state.group===g}" data-fg="${esc(g)}">${esc(g)}</button>`).join("")}</div></div>
+    <label>Ne konuştunuz (yalnızca sen görürsün)<textarea id="f-topic"></textarea></label>
+    <div class="two"><label>Hatırlatma tarihi<input id="f-remind" type="date"></label><label>Hatırlatma notu<input id="f-remindNote" placeholder="Makaleyi gönder"></label></div>
+    <div class="two"><label>Telefon<input id="f-phone" type="tel" placeholder="0532 000 00 00"></label><label>Kim tanıştırdı<input id="f-via"></label></div>
+    <div style="display:flex;gap:8px"><button class="btn" type="submit">Kaydet</button><button class="btn ghost" type="button" data-close>Vazgeç</button></div></form>`);
+  $("f-name").focus();
+  $("addForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const photo = await readImg($("f-photo").files[0]);
+    const groups = [...document.querySelectorAll("#f-groups [aria-pressed=true]")].map(b=>b.dataset.fg);
+    store.people.push({id:"p"+Date.now(), title:$("f-title").value.trim(), name:$("f-name").value.trim(), inst:$("f-inst").value.trim(), city:$("f-city").value.trim(), event:$("f-event").value.trim(), date:$("f-date").value, groups,
+      topic:$("f-topic").value.trim(), remind:$("f-remind").value, remindNote:$("f-remindNote").value.trim(), via:$("f-via").value.trim(), phone:$("f-phone").value.trim(), photo, verified:false});
+    save(); closeSheet(); state.page=0; render(); show("people"); toast("Kişi kaydedildi");
+  });
+}
+$("addBtn").onclick = openAdd;
+
+function openNewGroup(){
+  openSheet(`<h2>Yeni grup</h2><form id="gForm"><label>Grup adı<input id="g-name" required placeholder="Örn. Vergi hukuku"></label>
+    <div style="display:flex;gap:8px"><button class="btn" type="submit">Oluştur</button><button class="btn ghost" type="button" data-close>Vazgeç</button></div></form>
+    ${store.groups.length?`<div><label style="margin-bottom:6px">Mevcut gruplar (silmek için dokun)</label><div class="gpick">${store.groups.map(g=>`<button class="gchip" data-delg="${esc(g)}">${esc(g)} ×</button>`).join("")}</div></div>`:""}`);
+  $("g-name").focus();
+  $("gForm").addEventListener("submit", e => { e.preventDefault(); const g = $("g-name").value.trim(); if (g && !store.groups.includes(g)) store.groups.push(g); save(); closeSheet(); state.group=g; state.page=0; render(); toast(`"${g}" grubu oluşturuldu`); });
+}
+
+// tıklama yönlendirme
+document.addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  const d = t.dataset;
+  if (d.open) openPerson(d.open);
+  else if (d.g !== undefined && t.closest("#groupBar")) { state.group = d.g; state.page = 0; renderPeople(); }
+  else if (t.id==="addGroup") openNewGroup();
+  else if (d.tg) { const p = store.people.find(x=>x.id===d.pid); const gs = new Set(p.groups||[]); gs.has(d.tg)?gs.delete(d.tg):gs.add(d.tg); p.groups=[...gs]; save(); render(); t.setAttribute("aria-pressed", gs.has(d.tg)); }
+  else if (d.fg) t.setAttribute("aria-pressed", t.getAttribute("aria-pressed")!=="true");
+  else if (d.delg) { store.groups = store.groups.filter(g=>g!==d.delg); store.people.forEach(p=>p.groups=(p.groups||[]).filter(g=>g!==d.delg)); if(state.group===d.delg) state.group=""; save(); render(); t.remove(); toast("Grup silindi; kişiler duruyor"); }
+  else if (d.del) { if (t.dataset.confirm) { store.people = store.people.filter(p=>p.id!==d.del); save(); closeSheet(); render(); toast("Kişi silindi"); } else { t.dataset.confirm="1"; t.textContent="Silmek için tekrar dokun"; } }
+  else if (d.done) { const p = store.people.find(x=>x.id===d.done); p.remind=""; p.remindNote=""; save(); closeSheet(); render(); toast("Hatırlatma tamamlandı"); }
+  else if (d.close !== undefined) closeSheet();
+  else if (d.call) showCall(d.call);
+  else if (d.endcall !== undefined) $("call").hidden = true;
+});
+$("fOrg").onchange = e => { state.org = e.target.value; state.page = 0; renderPeople(); };
+$("fCity").onchange = e => { state.city = e.target.value; state.page = 0; renderPeople(); };
+$("search").oninput = e => { state.q = e.target.value; state.page = 0; renderPeople(); };
+$("perPage").onchange = e => { prefs.perPage = +e.target.value; state.page = 0; save(); renderPeople(); };
+$("prev").onclick = () => { state.page--; renderPeople(); window.scrollTo(0,0); };
+$("next").onclick = () => { state.page++; renderPeople(); window.scrollTo(0,0); };
+$("sortBtn").onclick = () => { prefs.sort = prefs.sort==="az" ? "recent" : "az"; save(); renderPeople(); toast(prefs.sort==="az" ? "A–Z sıralandı" : "Son tanışılan önce"); };
+
+function showCall(id){
+  const p = store.people.find(x=>x.id===id); closeSheet();
+  $("call").innerHTML = `<div class="cinfo"><span class="ctag">GELEN ARAMA · SOSYO AKADEMİ</span>${avatar(p)}<span>${esc(p.title)}</span><span class="cname">${esc(p.name)}</span><span style="opacity:.8">${esc(p.inst)}</span>
+    <div class="ccard"><span><b>Tanışma:</b> ${esc(p.event||"–")}, ${fmt(p.date)}</span>${p.topic?`<span><b>Not:</b> ${esc(p.topic)}</span>`:""}${p.remindNote?`<span><b>Yapılacak:</b> ${esc(p.remindNote)}</span>`:""}${(p.groups||[]).length?`<span><b>Grup:</b> ${esc(p.groups.join(", "))}</span>`:""}</div></div>
+    <div class="cbtns"><button data-endcall style="background:#c0392b">Reddet</button><button data-endcall style="background:#27ae60">Yanıtla</button></div>
+    <p style="font-size:.75rem;opacity:.6;margin:0">Önizleme: gerçek arama ekranı telefonun işletim sistemine göre değişir.</p>`;
+  $("call").hidden = false;
+}
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,2200); }
+
+// QR ve davet
+$("me-name").value = store.me.name; $("me-inst").value = store.me.inst;
+["me-name","me-inst"].forEach(id => $(id).oninput = () => { store.me = {name:$("me-name").value, inst:$("me-inst").value}; save(); drawQR(); });
+function inviteLink(){ const slug = trLower(store.me.name||"akademisyen").replace(/[^a-z0-9ğüşıöç]+/g,"-").replace(/^-|-$/g,""); return `https://sosyoakademi.example/tanis/${slug}`; }
+function drawQR(){ const box=$("qr"); box.innerHTML=""; const link=inviteLink(); $("inviteLink").textContent=link;
+  if (window.QRCode) new QRCode(box,{text:link,width:180,height:180,colorDark:"#17211f",colorLight:"#ffffff"}); else box.textContent="QR yüklenemedi"; }
+$("copyBtn").onclick = () => { const l = inviteLink(); navigator.clipboard?.writeText(l).then(()=>toast("Bağlantı kopyalandı"), ()=>toast("Kopyalanamadı; bağlantıyı seçip kopyala")) ?? toast("Kopyalanamadı; bağlantıyı seçip kopyala"); };
+$("previewJoin").onclick = () => { $("joinInviter").textContent = store.me.name || "Bir meslektaşın"; $("joinMail").hidden=true; $("joinDone").hidden=true; $("joinChoose").hidden=false; show("join"); };
+$("joinBack").onclick = () => show("qr");
+const joinOk = how => { $("joinChoose").hidden=true; $("joinMail").hidden=true; $("joinDone").hidden=false; $("joinDoneText").textContent = how+" Davet edenle bağlantın ikinizin onayıyla kuruldu. Bu bağlantıyı başka kimse göremez."; };
+$("joinOrcid").onclick = () => joinOk("ORCID kaydından adın, kurumun ve araştırma alanların dolduruldu.");
+$("joinVouch").onclick = () => joinOk("Davet eden kişi seninle yüz yüze tanıştığını onayladı; profilinde 'Kamu uzmanı' rozeti görünecek.");
+$("joinMailBtn").onclick = () => { $("joinChoose").hidden=true; $("joinMail").hidden=false; $("j-mail").focus(); };
+$("joinMail").addEventListener("submit", e => { e.preventDefault(); const m = $("j-mail").value.trim().toLowerCase();
+  if (!/\.(edu|edu\.tr|gov\.tr|ac\.uk|ac\.[a-z]{2}|edu\.[a-z]{2})$/.test(m.split("@")[1]||"")) { $("j-err").textContent="Bu adres akademik veya kamu alan adına ait görünmüyor. Kurum e-postanı yaz ya da ORCID ile doğrula."; $("j-err").hidden=false; return; }
+  $("j-err").hidden=true; joinOk(m+" adresi doğrulandı (önizlemede kod adımı atlandı)."); });
+
+function showLogin(on){ $("v-login").hidden = !on; document.querySelector(".tabbar").hidden = on; $("lgMain").hidden = false; $("lgCode").hidden = true; }
+document.querySelectorAll("[data-login]").forEach(b => b.onclick = () => { prefs.loggedIn = true; save(); showLogin(false); show("people"); toast(b.dataset.login + " ile giriş yapıldı (önizleme)"); });
+$("lgInvite").onclick = () => { $("lgMain").hidden = true; $("lgCode").hidden = false; $("lg-code").focus(); };
+$("lgBack").onclick = () => { $("lgMain").hidden = false; $("lgCode").hidden = true; };
+$("lgCode").addEventListener("submit", e => { e.preventDefault(); showLogin(false); $("joinInviter").textContent = "Bir meslektaşın"; $("joinMail").hidden=true; $("joinDone").hidden=true; $("joinChoose").hidden=false; show("join"); });
+$("showLogin").onclick = () => { prefs.loggedIn = false; save(); showLogin(true); };
+$("exportBtn").onclick = async () => {
+  const name = `sosyo-akademi-yedek-${iso(new Date())}.json`;
+  const blob = new Blob([JSON.stringify(store)], {type:"application/json"});
+  const file = new File([blob], name, {type:"application/json"});
+  try { if (navigator.canShare && navigator.canShare({files:[file]})) { await navigator.share({files:[file], title:"Sosyo Akademi yedeği"}); return; } } catch(e) { if (e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+};
+$("importIn").onchange = e => { const f = e.target.files[0]; if (!f) return; const fr = new FileReader();
+  fr.onload = () => { try { const d = JSON.parse(fr.result); if (!Array.isArray(d.people)) throw 0; store = d; store.groups ||= []; store.me ||= {name:"",inst:""}; save(); render(); toast(`${d.people.length} kişi geri yüklendi`); } catch(_) { toast("Bu dosya bir Sosyo Akademi yedeği değil"); } e.target.value = ""; };
+  fr.readAsText(f); };
+$("clearEx").onclick = () => { const n = store.people.filter(p=>p.ex).length; store.people = store.people.filter(p=>!p.ex); save(); render(); toast(`${n} örnek kişi silindi`); };
+try { navigator.storage?.persist?.(); } catch(e) {}
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+showLogin(false);
+render();
+</script>
+
+</body>
+</html>
