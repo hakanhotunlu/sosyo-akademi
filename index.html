@@ -221,6 +221,7 @@ img{max-width:100%}
       <p style="margin:0;max-width:40ch">Tanıştığın kişi bu kodu telefonunun kamerasıyla okutunca kartın onun defterine eklenir. O da sana kendi kodunu gösterirse aşağıdaki düğmeyle okut.</p>
       <p class="mono" id="inviteLink" hidden></p>
       <button class="btn" type="button" id="scanBtn">Karşı tarafın QR kodunu okut</button>
+      <form id="pasteForm" style="width:100%;display:flex;gap:8px"><input id="pasteIn" placeholder="Kart bağlantısını yapıştır" aria-label="Sana gönderilen kart bağlantısı"><button class="btn ghost" type="submit">Ekle</button></form>
       <div id="scanBox" hidden style="width:100%;display:grid;gap:8px"><video id="scanVid" playsinline muted style="width:100%;border-radius:10px;background:#000"></video><p class="mono" id="scanMsg" style="margin:0">Kodu çerçeveye getir…</p><button class="btn ghost" type="button" id="scanStop">Vazgeç</button></div>
       <button class="btn ghost" type="button" id="copyBtn" hidden>Davet bağlantısını kopyala</button>
     </div>
@@ -497,12 +498,38 @@ function receiveCard(raw){
     if (dup) { Object.assign(dup, base); if ($("r-topic").value.trim()) dup.topic = [dup.topic, $("r-topic").value.trim()].filter(Boolean).join(" · "); }
     else store.people.push({id:"p"+Date.now(), ...base, event:$("r-event").value.trim(), date:$("r-date").value, topic:$("r-topic").value.trim(), groups:state.group?[state.group]:[], remind:"", remindNote:"", via:"", photo:""});
     save(); closeSheet(); render(); show("people"); toast(`${c.name} defterine eklendi`);
-    const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
-    if (firstRun && !standalone) openSheet(`<h2>Defterini telefonuna ekle</h2><p style="margin:0">${esc(c.name)} artık defterinde. Uygulamayı ana ekranına eklersen bir dahaki tanışmada kendi QR kartını da gösterebilirsin.</p>
-      <ol style="margin:0;padding-left:20px;display:grid;gap:6px"><li>Safari'nin altındaki Paylaş düğmesine dokun.</li><li><strong>Ana Ekrana Ekle</strong>'yi seç.</li><li>Ana ekrandaki Sosyo Akademi simgesinden aç ve "QR kartım"da kendi kartını doldur.</li></ol>
-      <p class="note">Ana ekrandan açılan uygulama, Safari'deki kayıtları görmez. ${esc(c.name)} kartını orada bir kez daha okutman gerekebilir.</p>
-      <button class="btn" type="button" data-close>Tamam</button>`);
-    firstRun = false; });
+    const wasFirst = firstRun; firstRun = false;
+    offerMyCard(c.name, () => installGuide(c.name, wasFirst));
+  });
+}
+// Karşılık: kartı alan kişi, kendi kartını QR olarak gösterir; karşı taraf uygulama içinden okutur.
+function offerMyCard(otherName, next){
+  const m = store.me;
+  openSheet(`<h2>${esc(otherName)} da seni kaydetsin</h2><p style="margin:0;color:var(--muted)">Bilgilerini yaz ve QR kodunu göster. ${esc(otherName)} kendi uygulamasındaki "Karşı tarafın QR kodunu okut" düğmesiyle okutsun.</p>
+    <form id="myForm"><div class="two"><label>Unvanın<input id="m-title" value="${esc(m.title||"")}" placeholder="Dr."></label><label>Adın soyadın<input id="m-name" required value="${esc(m.name||"")}"></label></div>
+    <div class="two"><label>Kurumun<input id="m-inst" value="${esc(m.inst||"")}" placeholder="Üniversite, bölüm"></label><label>İlin<input id="m-city" value="${esc(m.city||"")}"></label></div>
+    <div class="two"><label>Telefon (isteğe bağlı)<input id="m-phone" type="tel" value="${esc(m.phone||"")}"></label><label>E-posta (isteğe bağlı)<input id="m-email" type="email" value="${esc(m.email||"")}"></label></div>
+    <div style="display:flex;gap:8px"><button class="btn" type="submit">QR kodumu göster</button><button class="btn ghost" type="button" id="mySkip">Şimdi değil</button></div></form>
+    <div id="myQrWrap" hidden style="display:grid;justify-items:center;gap:10px"><div id="qr2" style="background:#fff;padding:12px;border-radius:8px"></div>
+    <p class="mono" style="margin:0;text-align:center">Uygulaması yoksa: bağlantıyı mesajla gönder, o da uygulamadaki "Kart bağlantısını yapıştır" alanına yapıştırsın.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button class="btn ghost" type="button" id="myShare">Bağlantıyı mesajla gönder</button><button class="btn" type="button" id="myDone">Bitti</button></div></div>`);
+  $("mySkip").onclick = () => { closeSheet(); next(); };
+  $("myForm").addEventListener("submit", e => { e.preventDefault();
+    ["title","name","inst","city","phone","email"].forEach(k => store.me[k] = $("m-"+k).value.trim()); save();
+    ["title","name","inst","city","phone","email"].forEach(k => { const el = $("me-"+k); if (el) el.value = store.me[k]; });
+    $("myForm").hidden = true; $("myQrWrap").hidden = false;
+    if (window.QRCode) new QRCode($("qr2"), {text: cardLink(), width:220, height:220, colorDark:"#17211f", colorLight:"#ffffff", correctLevel: QRCode.CorrectLevel.L}); else $("qr2").textContent = "QR yüklenemedi; bağlantıyı mesajla gönder.";
+  });
+  $("myShare").onclick = async () => { const l = cardLink(); try { if (navigator.share) { await navigator.share({title:"Sosyo Akademi kartım", url:l}); return; } } catch(e) { if (e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(l); toast("Bağlantı kopyalandı"); } catch(e) { toast("Kopyalanamadı"); } };
+  $("myDone").onclick = () => { closeSheet(); next(); };
+}
+function installGuide(name, wasFirst){
+  const standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  if (wasFirst && !standalone) openSheet(`<h2>Defterini telefonuna ekle</h2><p style="margin:0">${esc(name)} artık defterinde. Uygulamayı ana ekranına eklersen bir dahaki tanışmada da kullanabilirsin.</p>
+    <ol style="margin:0;padding-left:20px;display:grid;gap:6px"><li>Safari'nin altındaki Paylaş düğmesine dokun.</li><li><strong>Ana Ekrana Ekle</strong>'yi seç.</li><li>Ana ekrandaki Sosyo Akademi simgesinden aç.</li></ol>
+    <p class="note">Ana ekrandan açılan uygulama, Safari'deki kayıtları görmez. ${esc(name)} kartını orada bir kez daha okutman gerekebilir.</p>
+    <button class="btn" type="button" data-close>Tamam</button>`);
 }
 let scanStream = null;
 async function startScan(){
@@ -520,6 +547,7 @@ async function startScan(){
   tick();
 }
 function stopScan(){ if (scanStream) scanStream.getTracks().forEach(t => t.stop()); scanStream = null; $("scanBox").hidden = true; $("scanBtn").hidden = false; }
+$("pasteForm").addEventListener("submit", e => { e.preventDefault(); const v = $("pasteIn").value.trim(); if (v) { $("pasteIn").value = ""; receiveCard(v); } });
 $("scanBtn").onclick = startScan; $("scanStop").onclick = stopScan;
 function checkHash(){ if (location.hash.startsWith("#k=")) { const h = location.hash; history.replaceState(null, "", location.pathname); receiveCard(h); } }
 window.addEventListener("hashchange", checkHash);
@@ -556,7 +584,7 @@ $("importIn").onchange = e => { const f = e.target.files[0]; if (!f) return; con
 $("clearEx").onclick = () => { const n = store.people.filter(p=>p.ex).length; store.people = store.people.filter(p=>!p.ex); save(); render(); toast(`${n} örnek kişi silindi`); };
 try { navigator.storage?.persist?.(); } catch(e) {}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
-const APP_VERSION = 4;
+const APP_VERSION = 5;
 $("verNow").textContent = APP_VERSION;
 async function latestVersion(){ const r = await fetch("version.json?t=" + Date.now(), {cache:"no-store"}); return (await r.json()).version; }
 async function applyUpdate(){
