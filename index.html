@@ -320,7 +320,7 @@ const S = [
 const sample = S.map((r,i)=>({id:"e"+i,ex:true,title:r[0],name:r[1],inst:r[2],groups:r[3].split(","),event:r[4],date:addDays(-r[5]),topic:r[6],verified:!!r[7],remind:r[8]===""?"":addDays(r[8]),remindNote:r[9],via:"",photo:""}));
 const baseGroups = ["Maliye","Sosyoloji","Eğitim","Kamu yönetimi","Kamu"];
 
-let store = {people: sample, groups: baseGroups, me:{name:"",inst:""}};
+let store = {people: [], groups: [], me:{name:"",inst:""}};
 let firstRun = true;
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.people)) { store = s; firstRun = false; } } catch(e) {}
 // Kart bağlantısıyla ilk kez gelen kişi örnek kişileri görmesin; defteri boş başlasın.
@@ -363,7 +363,7 @@ function renderPeople(){
   state.page = Math.min(state.page, pages-1);
   const slice = list.slice(state.page*per, state.page*per+per);
   $("grid").innerHTML = slice.length ? slice.map(p=>`<button class="tile" data-open="${p.id}">${avatar(p)}<span class="t-title">${esc(p.title)}</span><span class="t-name">${esc(p.name)}</span><span class="t-inst">${esc(p.inst)}</span></button>`).join("")
-    : `<div class="empty">${q||state.group ? "Bu filtreye uyan kişi yok." : "Henüz kimse yok. Alttaki + ile ilk tanıştığın kişiyi ekle."}</div>`;
+    : `<div class="empty">${q||state.group ? "Bu filtreye uyan kişi yok." : "Henüz kimse yok. Alttaki + ile ilk tanıştığın kişiyi ekle ya da \"QR kartım\"dan birinin kodunu okut."}${!q&&!state.group&&!all.length?`<button class=\"link\" style=\"display:block;margin:10px auto 0\" id=\"loadSamples\">Uygulamayı örnek kişilerle dene</button>`:""}</div>`;
   $("peopleCount").textContent = `${list.length} kişi${state.group?" · "+state.group:""}${state.org?" · "+state.org:""}${state.city?" · "+state.city:""} · ${prefs.sort==="az"?"A–Z":"son tanışılan"}`;
   $("pageInfo").textContent = `${state.page+1} / ${pages}`;
   $("prev").disabled = state.page===0; $("next").disabled = state.page>=pages-1;
@@ -584,7 +584,8 @@ $("importIn").onchange = e => { const f = e.target.files[0]; if (!f) return; con
 $("clearEx").onclick = () => { const n = store.people.filter(p=>p.ex).length; store.people = store.people.filter(p=>!p.ex); save(); render(); toast(`${n} örnek kişi silindi`); };
 try { navigator.storage?.persist?.(); } catch(e) {}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
-const APP_VERSION = 5;
+const APP_VERSION = 6;
+document.addEventListener("click", e => { if (e.target.id === "loadSamples") { store.people = sample.map(p => ({...p})); store.groups = [...new Set([...store.groups, ...baseGroups])]; save(); render(); toast("Örnek kişiler eklendi; QR kartım'dan silebilirsin"); } });
 $("verNow").textContent = APP_VERSION;
 async function latestVersion(){ const r = await fetch("version.json?t=" + Date.now(), {cache:"no-store"}); return (await r.json()).version; }
 async function applyUpdate(){
