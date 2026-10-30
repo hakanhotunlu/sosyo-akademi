@@ -214,11 +214,14 @@ img{max-width:100%}
   <section id="v-qr" hidden>
     <div class="top"><div class="titlebar"><h1>QR kartım</h1></div></div>
     <div class="qrbox">
-      <label style="width:100%;text-align:left">Kartında görünecek adın<input id="me-name" placeholder="Ayşe Yılmaz"></label>
-      <label style="width:100%;text-align:left">Kurumun<input id="me-inst" placeholder="Üniversite, bölüm"></label>
+      <div class="two" style="width:100%;text-align:left"><label>Unvanın<input id="me-title" placeholder="Doç. Dr."></label><label>Adın soyadın<input id="me-name" placeholder="Ayşe Yılmaz"></label></div>
+      <div class="two" style="width:100%;text-align:left"><label>Kurumun<input id="me-inst" placeholder="Üniversite, bölüm"></label><label>İlin<input id="me-city" placeholder="Ankara"></label></div>
+      <div class="two" style="width:100%;text-align:left"><label>Telefonun (isteğe bağlı)<input id="me-phone" type="tel"></label><label>E-postan (isteğe bağlı)<input id="me-email" type="email"></label></div>
       <div id="qr" aria-label="Kişisel QR kodun"></div>
-      <p style="margin:0;max-width:40ch">Tanıştığın kişi bu kodu okutunca ikinizin de onayıyla <strong>doğrulanmış bağlantı</strong> kurulur. Uygulaması yoksa davet bağlantısını gönder.</p>
-      <p class="mono" id="inviteLink"></p>
+      <p style="margin:0;max-width:40ch">Tanıştığın kişi bu kodu telefonunun kamerasıyla okutunca kartın onun defterine eklenir. O da sana kendi kodunu gösterirse aşağıdaki düğmeyle okut.</p>
+      <p class="mono" id="inviteLink" hidden></p>
+      <button class="btn" type="button" id="scanBtn">Karşı tarafın QR kodunu okut</button>
+      <div id="scanBox" hidden style="width:100%;display:grid;gap:8px"><video id="scanVid" playsinline muted style="width:100%;border-radius:10px;background:#000"></video><p class="mono" id="scanMsg" style="margin:0">Kodu çerçeveye getir…</p><button class="btn ghost" type="button" id="scanStop">Vazgeç</button></div>
       <button class="btn ghost" type="button" id="copyBtn" hidden>Davet bağlantısını kopyala</button>
     </div>
     <div class="qrbox" style="align-items:stretch;text-align:left">
@@ -464,11 +467,49 @@ function showCall(id){
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,2200); }
 
 // QR ve davet
-$("me-name").value = store.me.name; $("me-inst").value = store.me.inst;
-["me-name","me-inst"].forEach(id => $(id).oninput = () => { store.me = {name:$("me-name").value, inst:$("me-inst").value}; save(); drawQR(); });
-function inviteLink(){ const slug = trLower(store.me.name||"akademisyen").replace(/[^a-z0-9ğüşıöç]+/g,"-").replace(/^-|-$/g,""); return `https://sosyoakademi.example/tanis/${slug}`; }
+const ME = ["title","name","inst","city","phone","email"];
+ME.forEach(k => { $("me-"+k).value = store.me[k] || ""; $("me-"+k).oninput = () => { store.me[k] = $("me-"+k).value.trim(); save(); drawQR(); }; });
+const b64e = o => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(o)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const b64d = t => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(t.replace(/-/g,"+").replace(/_/g,"/")), c => c.charCodeAt(0))));
+function cardLink(){ const m = store.me, o = {}; ME.forEach(k => { if (m[k]) o[k] = m[k]; }); return location.origin + location.pathname + "#k=" + b64e(o); }
+function receiveCard(raw){
+  let c; try { const t = raw.includes("#k=") ? raw.split("#k=")[1] : raw; c = b64d(t); } catch(e) { toast("Bu bir Sosyo Akademi kartı değil"); return; }
+  if (!c || !c.name) { toast("Kartta ad yok"); return; }
+  const dup = store.people.find(p => trLower(p.name) === trLower(c.name) && (!c.inst || trLower(orgOf(p)) === trLower((c.inst||"").split(",")[0].trim())));
+  openSheet(`<h2>${esc(c.title||"")} ${esc(c.name)} kartını paylaştı</h2><p style="margin:0;color:var(--muted)">${esc(c.inst||"")}${c.city?" · "+esc(c.city):""}</p>
+    ${dup?`<p class="note">Defterinde bu isimde biri zaten var; kaydedersen kartı güncellenir, notların korunur.</p>`:""}
+    <form id="rcvForm"><div class="two"><label>Nerede tanıştınız<input id="r-event" list="evdl2" placeholder="Maliye Sempozyumu 2026"></label><label>Ne zaman<input id="r-date" type="date" value="${iso(today)}"></label></div>
+    <datalist id="evdl2">${[...new Set(store.people.map(p=>p.event).filter(Boolean))].map(e=>`<option value="${esc(e)}">`).join("")}</datalist>
+    <label>Ne konuştunuz (yalnızca sen görürsün)<textarea id="r-topic"></textarea></label>
+    <div style="display:flex;gap:8px"><button class="btn" type="submit">Defterime ekle</button><button class="btn ghost" type="button" data-close>Vazgeç</button></div></form>`);
+  $("rcvForm").addEventListener("submit", e => { e.preventDefault();
+    const base = {title:c.title||"", name:c.name, inst:c.inst||"", city:c.city||"", phone:c.phone||"", email:c.email||"", verified:true};
+    if (dup) { Object.assign(dup, base); if ($("r-topic").value.trim()) dup.topic = [dup.topic, $("r-topic").value.trim()].filter(Boolean).join(" · "); }
+    else store.people.push({id:"p"+Date.now(), ...base, event:$("r-event").value.trim(), date:$("r-date").value, topic:$("r-topic").value.trim(), groups:state.group?[state.group]:[], remind:"", remindNote:"", via:"", photo:""});
+    save(); closeSheet(); render(); show("people"); toast(`${c.name} defterine eklendi`); });
+}
+let scanStream = null;
+async function startScan(){
+  $("scanBox").hidden = false; $("scanBtn").hidden = true; $("scanMsg").textContent = "Kamera açılıyor…";
+  try {
+    if (!window.jsQR) await new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); });
+    scanStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+  } catch(e) { $("scanMsg").textContent = "Kamera açılamadı. Ayarlar > Safari > Kamera iznini kontrol et ya da internet bağlantını dene."; return; }
+  const v = $("scanVid"); v.srcObject = scanStream; await v.play(); $("scanMsg").textContent = "Kodu çerçeveye getir…";
+  const cv = document.createElement("canvas"), cx = cv.getContext("2d", {willReadFrequently:true});
+  const tick = () => { if (!scanStream) return;
+    if (v.readyState >= 2) { cv.width = v.videoWidth; cv.height = v.videoHeight; cx.drawImage(v,0,0); const r = jsQR(cx.getImageData(0,0,cv.width,cv.height).data, cv.width, cv.height);
+      if (r && r.data) { stopScan(); receiveCard(r.data); return; } }
+    requestAnimationFrame(tick); };
+  tick();
+}
+function stopScan(){ if (scanStream) scanStream.getTracks().forEach(t => t.stop()); scanStream = null; $("scanBox").hidden = true; $("scanBtn").hidden = false; }
+$("scanBtn").onclick = startScan; $("scanStop").onclick = stopScan;
+function checkHash(){ if (location.hash.startsWith("#k=")) { const h = location.hash; history.replaceState(null, "", location.pathname); receiveCard(h); } }
+window.addEventListener("hashchange", checkHash);
+function inviteLink(){ return cardLink(); }
 function drawQR(){ const box=$("qr"); box.innerHTML=""; const link=inviteLink(); $("inviteLink").textContent=link;
-  if (window.QRCode) new QRCode(box,{text:link,width:180,height:180,colorDark:"#17211f",colorLight:"#ffffff"}); else box.textContent="QR yüklenemedi"; }
+  if (window.QRCode) new QRCode(box,{text:link,width:220,height:220,colorDark:"#17211f",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.L}); else box.textContent="QR yüklenemedi"; }
 $("copyBtn").onclick = () => { const l = inviteLink(); navigator.clipboard?.writeText(l).then(()=>toast("Bağlantı kopyalandı"), ()=>toast("Kopyalanamadı; bağlantıyı seçip kopyala")) ?? toast("Kopyalanamadı; bağlantıyı seçip kopyala"); };
 $("previewJoin").onclick = () => { $("joinInviter").textContent = store.me.name || "Bir meslektaşın"; $("joinMail").hidden=true; $("joinDone").hidden=true; $("joinChoose").hidden=false; show("join"); };
 $("joinBack").onclick = () => show("qr");
@@ -501,6 +542,7 @@ try { navigator.storage?.persist?.(); } catch(e) {}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 showLogin(false);
 render();
+checkHash();
 </script>
 
 </body>
