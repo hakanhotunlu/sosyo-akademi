@@ -230,6 +230,11 @@ img{max-width:100%}
       <button class="btn" type="button" id="exportBtn">Dışa aktar (yedek dosyası)</button>
       <label>Yedekten geri yükle<input type="file" id="importIn" accept="application/json,.json"></label>
       <button class="btn danger" type="button" id="clearEx">Örnek kişileri sil</button>
+    </div>
+    <div class="qrbox" style="align-items:stretch;text-align:left">
+      <h2>Güncelleme</h2>
+      <p style="margin:0;color:var(--muted);font-size:.88rem">Yüklü sürüm: <span class="mono" id="verNow"></span>. Güncellemek kayıtlarını silmez.</p>
+      <button class="btn" type="button" id="updBtn">Güncellemeleri denetle</button>
       <button class="link" type="button" id="showLogin" hidden>Giriş ekranını göster (çıkış yap)</button>
       <button class="link" type="button" id="previewJoin" hidden>Davet ettiğin kişinin göreceği kayıt ekranını önizle</button>
     </div>
@@ -272,6 +277,7 @@ img{max-width:100%}
 <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true"><div class="in" id="sheetIn"></div></div>
 <div class="call" id="call" hidden role="dialog" aria-label="Gelen arama önizlemesi"></div>
 <div class="toast" id="toast" hidden></div>
+<button class="btn" id="updBanner" type="button" hidden style="position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:56;box-shadow:0 4px 14px rgba(0,0,0,.2)">Yeni sürüm var · Güncelle</button>
 
 <script>
 const KEY = "sosyo-akademi-v2", PREF = "sosyo-akademi-prefs";
@@ -550,6 +556,22 @@ $("importIn").onchange = e => { const f = e.target.files[0]; if (!f) return; con
 $("clearEx").onclick = () => { const n = store.people.filter(p=>p.ex).length; store.people = store.people.filter(p=>!p.ex); save(); render(); toast(`${n} örnek kişi silindi`); };
 try { navigator.storage?.persist?.(); } catch(e) {}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+const APP_VERSION = 4;
+$("verNow").textContent = APP_VERSION;
+async function latestVersion(){ const r = await fetch("version.json?t=" + Date.now(), {cache:"no-store"}); return (await r.json()).version; }
+async function applyUpdate(){
+  toast("Güncelleniyor…");
+  try { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } catch(e) {}
+  try { const r = await navigator.serviceWorker?.getRegistration(); await r?.update(); } catch(e) {}
+  location.replace(location.pathname + "?v=" + Date.now());
+}
+$("updBtn").onclick = async () => {
+  try { const v = await latestVersion(); if (v > APP_VERSION) applyUpdate(); else toast("En güncel sürümü kullanıyorsun"); }
+  catch(e) { toast("Denetlenemedi; internet bağlantını kontrol et"); }
+};
+$("updBanner").onclick = applyUpdate;
+latestVersion().then(v => { if (v > APP_VERSION) $("updBanner").hidden = false; }).catch(()=>{});
+if (location.search.includes("v=")) history.replaceState(null, "", location.pathname + location.hash);
 showLogin(false);
 render();
 checkHash();
