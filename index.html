@@ -326,6 +326,8 @@ let firstRun = true;
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.people)) { store = s; firstRun = false; } } catch(e) {}
 // Kart bağlantısıyla ilk kez gelen kişi örnek kişileri görmesin; defteri boş başlasın.
 if (firstRun && location.hash.startsWith("#k=")) { store.people = []; store.groups = []; }
+// Eski sürümlerde kaydedilmiş örnek kişileri bir kez temizle (Safari ve ana ekran uygulaması ayrı ayrı).
+if (!store.cleanedSamples) { store.people = store.people.filter(p => !p.ex); store.groups = store.groups.filter(g => store.people.some(p => (p.groups||[]).includes(g))); store.cleanedSamples = true; try { localStorage.setItem(KEY, JSON.stringify(store)); } catch(e) {} }
 let prefs = {perPage:18, sort:"recent"};
 try { Object.assign(prefs, JSON.parse(localStorage.getItem(PREF)) || {}); } catch(e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); localStorage.setItem(PREF, JSON.stringify(prefs)); } catch(e) {} };
@@ -596,7 +598,7 @@ $("importIn").onchange = e => { const f = e.target.files[0]; if (!f) return; con
 $("clearEx").onclick = () => { const n = store.people.filter(p=>p.ex).length; store.people = store.people.filter(p=>!p.ex); save(); render(); toast(`${n} örnek kişi silindi`); };
 try { navigator.storage?.persist?.(); } catch(e) {}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
-const APP_VERSION = 7;
+const APP_VERSION = 8;
 document.addEventListener("click", e => { if (e.target.id === "loadSamples") { store.people = sample.map(p => ({...p})); store.groups = [...new Set([...store.groups, ...baseGroups])]; save(); render(); toast("Örnek kişiler eklendi; QR kartım'dan silebilirsin"); } });
 $("verNow").textContent = APP_VERSION;
 async function latestVersion(){ const r = await fetch("version.json?t=" + Date.now(), {cache:"no-store"}); return (await r.json()).version; }
