@@ -187,6 +187,7 @@ img{max-width:100%}
         <button class="iconbtn" id="sortBtn" type="button" aria-label="Sıralamayı değiştir" title="Sıralama"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg></button>
       </div>
       <div class="tools"><input id="search" type="search" placeholder="Ad, kurum, konu ara"></div>
+      <div class="two"><button class="btn" type="button" id="quickScan">QR kod okut</button><button class="btn ghost" type="button" id="quickPaste">Panodan kart ekle</button></div>
       <div class="filters"><select id="fOrg" aria-label="Kuruma göre filtrele"></select><select id="fCity" aria-label="İle göre filtrele"></select></div>
       <div class="groups" id="groupBar" role="toolbar" aria-label="Gruplar"></div>
     </div>
@@ -221,7 +222,7 @@ img{max-width:100%}
       <p style="margin:0;max-width:40ch">Tanıştığın kişi bu kodu telefonunun kamerasıyla okutunca kartın onun defterine eklenir. O da sana kendi kodunu gösterirse aşağıdaki düğmeyle okut.</p>
       <p class="mono" id="inviteLink" hidden></p>
       <button class="btn" type="button" id="scanBtn">Karşı tarafın QR kodunu okut</button>
-      <form id="pasteForm" style="width:100%;display:flex;gap:8px"><input id="pasteIn" placeholder="Kart bağlantısını yapıştır" aria-label="Sana gönderilen kart bağlantısı"><button class="btn ghost" type="submit">Ekle</button></form>
+      <form id="pasteForm" style="width:100%;display:flex;gap:8px"><input id="pasteIn" placeholder="Kart bağlantısını buraya yapıştır" aria-label="Sana gönderilen kart bağlantısı"><button class="btn ghost" type="submit">Ekle</button></form>
       <div id="scanBox" hidden style="width:100%;display:grid;gap:8px"><video id="scanVid" playsinline muted style="width:100%;border-radius:10px;background:#000"></video><p class="mono" id="scanMsg" style="margin:0">Kodu çerçeveye getir…</p><button class="btn ghost" type="button" id="scanStop">Vazgeç</button></div>
       <button class="btn ghost" type="button" id="copyBtn" hidden>Davet bağlantısını kopyala</button>
     </div>
@@ -483,11 +484,13 @@ const b64e = o => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stri
 const b64d = t => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(t.replace(/-/g,"+").replace(/_/g,"/")), c => c.charCodeAt(0))));
 function cardLink(){ const m = store.me, o = {}; ME.forEach(k => { if (m[k]) o[k] = m[k]; }); return location.origin + location.pathname + "#k=" + b64e(o); }
 function receiveCard(raw){
-  let c; try { const t = raw.includes("#k=") ? raw.split("#k=")[1] : raw; c = b64d(t); } catch(e) { toast("Bu bir Sosyo Akademi kartı değil"); return; }
+  let c; try { const t = raw.includes("#k=") ? raw.split("#k=")[1] : raw; c = b64d(t); window.__lastCard = t; } catch(e) { toast("Bu bir Sosyo Akademi kartı değil"); return; }
   if (!c || !c.name) { toast("Kartta ad yok"); return; }
   const dup = store.people.find(p => trLower(p.name) === trLower(c.name) && (!c.inst || trLower(orgOf(p)) === trLower((c.inst||"").split(",")[0].trim())));
+  const inSafari = !(navigator.standalone || matchMedia("(display-mode: standalone)").matches);
+  const bridge = inSafari ? `<div class="note" style="display:grid;gap:8px;color:var(--fg)"><strong>Ana ekranında Sosyo Akademi yüklü mü?</strong><span>Safari'de eklenen kart uygulamada görünmez. Kartı uygulamana aktarmak için: 1) aşağıdaki düğmeyle kartı kopyala, 2) ana ekrandaki uygulamayı aç, 3) Kişiler ekranında <b>Panodan kart ekle</b>'ye dokun.</span><button class="btn" type="button" id="copyCard">Kartı kopyala</button></div>` : "";
   const intro = firstRun ? `<p class="mono" style="margin:0">SOSYO AKADEMİ</p><p style="margin:0">Sosyo Akademi, tanıştığın akademisyenleri nerede ve ne konuştuğunuzla birlikte telefonunda saklayan kişisel bir defter. Kayıtların yalnızca bu telefonda durur; kimse göremez.</p>` : "";
-  openSheet(intro + `<div class="head"><span class="av" style="background:${hue(c.name)}">${esc(initials(c.name))}</span></div><h2 style="text-align:center">${esc(c.title||"")} ${esc(c.name)} kartını paylaştı</h2><p style="margin:0;color:var(--muted)">${esc(c.inst||"")}${c.city?" · "+esc(c.city):""}</p>
+  openSheet(bridge + intro + `<div class="head"><span class="av" style="background:${hue(c.name)}">${esc(initials(c.name))}</span></div><h2 style="text-align:center">${esc(c.title||"")} ${esc(c.name)} kartını paylaştı</h2><p style="margin:0;color:var(--muted)">${esc(c.inst||"")}${c.city?" · "+esc(c.city):""}</p>
     ${dup?`<p class="note">Defterinde bu isimde biri zaten var; kaydedersen kartı güncellenir, notların korunur.</p>`:""}
     <form id="rcvForm"><div class="two"><label>Nerede tanıştınız<input id="r-event" list="evdl2" placeholder="Maliye Sempozyumu 2026"></label><label>Ne zaman<input id="r-date" type="date" value="${iso(today)}"></label></div>
     <datalist id="evdl2">${[...new Set(store.people.map(p=>p.event).filter(Boolean))].map(e=>`<option value="${esc(e)}">`).join("")}</datalist>
@@ -547,6 +550,15 @@ async function startScan(){
   tick();
 }
 function stopScan(){ if (scanStream) scanStream.getTracks().forEach(t => t.stop()); scanStream = null; $("scanBox").hidden = true; $("scanBtn").hidden = false; }
+async function pasteCard(){
+  try { const t = (await navigator.clipboard.readText()).trim(); if (t.includes("#k=")) { receiveCard(t); return; } toast("Panoda bir kart bağlantısı yok"); }
+  catch(e) { show("qr"); $("pasteIn").focus(); toast("Bağlantıyı kutuya yapıştır"); }
+}
+$("quickPaste").onclick = pasteCard;
+$("quickScan").onclick = () => { show("qr"); startScan(); };
+document.addEventListener("click", async e => { if (e.target.id !== "copyCard") return;
+  const raw = location.origin + location.pathname + "#k=" + window.__lastCard;
+  try { await navigator.clipboard.writeText(raw); e.target.textContent = "Kopyalandı · şimdi uygulamayı aç"; } catch(_) { toast("Kopyalanamadı"); } });
 $("pasteForm").addEventListener("submit", e => { e.preventDefault(); const v = $("pasteIn").value.trim(); if (v) { $("pasteIn").value = ""; receiveCard(v); } });
 $("scanBtn").onclick = startScan; $("scanStop").onclick = stopScan;
 function checkHash(){ if (location.hash.startsWith("#k=")) { const h = location.hash; history.replaceState(null, "", location.pathname); receiveCard(h); } }
@@ -584,7 +596,7 @@ $("importIn").onchange = e => { const f = e.target.files[0]; if (!f) return; con
 $("clearEx").onclick = () => { const n = store.people.filter(p=>p.ex).length; store.people = store.people.filter(p=>!p.ex); save(); render(); toast(`${n} örnek kişi silindi`); };
 try { navigator.storage?.persist?.(); } catch(e) {}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
-const APP_VERSION = 6;
+const APP_VERSION = 7;
 document.addEventListener("click", e => { if (e.target.id === "loadSamples") { store.people = sample.map(p => ({...p})); store.groups = [...new Set([...store.groups, ...baseGroups])]; save(); render(); toast("Örnek kişiler eklendi; QR kartım'dan silebilirsin"); } });
 $("verNow").textContent = APP_VERSION;
 async function latestVersion(){ const r = await fetch("version.json?t=" + Date.now(), {cache:"no-store"}); return (await r.json()).version; }
